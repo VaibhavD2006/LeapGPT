@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+openai
+python-dotenv
+langchain
+langchain-community
+PyPDF2
+pinecone-client
+langchain-text-splitters
