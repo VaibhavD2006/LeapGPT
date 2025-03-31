@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeapGPT API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            min-height: 100px;
+            font-family: inherit;
+        }
+        button {
+            background-color: #4a6cf7;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3b5ce5;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .loading {
+            margin-top: 10px;
+            color: #666;
+        }
+        .history-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .user-message {
+            background-color: #e6f7ff;
+            border-left: 3px solid #1890ff;
+        }
+        .assistant-message {
+            background-color: #f6ffed;
+            border-left: 3px solid #52c41a;
+        }
+        .history-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LeapGPT API Test</h1>
+        
+        <div class="input-group">
+            <label for="idea">Business Idea:</label>
+            <input type="text" id="idea" placeholder="Enter your business idea" value="An AI-powered fitness app that creates personalized workout plans">
+        </div>
+        
+        <div class="input-group">
+            <label for="endpoint">Select Endpoint:</label>
+            <select id="endpoint">
+                <option value="build-plan">How To Build</option>
+                <option value="longevity-prediction">Longevity Predictor</option>
+                <option value="market-analysis">Consumer Market Analysis</option>
+            </select>
+        </div>
+        
+        <div class="input-group">
+            <label for="conversation">Conversation History (Optional):</label>
+            <div class="history-controls">
+                <button onclick="addUserMessage()">Add User Message</button>
+                <button onclick="addAssistantMessage()">Add Assistant Message</button>
+                <button onclick="clearHistory()">Clear History</button>
+            </div>
+            <div id="history-container"></div>
+        </div>
+        
+        <button onclick="callAPI()">Test API</button>
+        
+        <div id="loading" class="loading" style="display: none;">Processing request...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <pre id="result" class="result" style="display: none;"></pre>
+    </div>
+
+    <script>
+        // Conversation history
+        let conversationHistory = [];
+        
+        function addUserMessage() {
+            const message = prompt("Enter a user message:");
+            if (message) {
+                conversationHistory.push({
+                    role: "user",
+                    content: message
+                });
+                updateHistoryDisplay();
+            }
+        }
+        
+        function addAssistantMessage() {
+            const message = prompt("Enter an assistant message:");
+            if (message) {
+                conversationHistory.push({
+                    role: "assistant",
+                    content: message
+                });
+                updateHistoryDisplay();
+            }
+        }
+        
+        function clearHistory() {
+            conversationHistory = [];
+            updateHistoryDisplay();
+        }
+        
+        function updateHistoryDisplay() {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '';
+            
+            conversationHistory.forEach((message, index) => {
+                const item = document.createElement('div');
+                item.className = `history-item ${message.role}-message`;
+                
+                const roleLabel = document.createElement('strong');
+                roleLabel.textContent = message.role === 'user' ? 'User: ' : 'Assistant: ';
+                
+                const content = document.createElement('span');
+                content.textContent = message.content.length > 100 ? 
+                    message.content.substring(0, 100) + '...' : 
+                    message.content;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.style.marginLeft = '10px';
+                removeBtn.style.padding = '2px 5px';
+                removeBtn.style.fontSize = '12px';
+                removeBtn.onclick = function() {
+                    conversationHistory.splice(index, 1);
+                    updateHistoryDisplay();
+                };
+                
+                item.appendChild(roleLabel);
+                item.appendChild(content);
+                item.appendChild(removeBtn);
+                container.appendChild(item);
+            });
+        }
+        
+        async function callAPI() {
+            const idea = document.getElementById('idea').value;
+            const endpoint = document.getElementById('endpoint').value;
+            const resultEl = document.getElementById('result');
+            const errorEl = document.getElementById('error');
+            const loadingEl = document.getElementById('loading');
+            
+            if (!idea) {
+                errorEl.textContent = "Please enter a business idea";
+                errorEl.style.display = "block";
+                resultEl.style.display = "none";
+                return;
+            }
+            
+            // Reset UI
+            errorEl.style.display = "none";
+            resultEl.style.display = "none";
+            loadingEl.style.display = "block";
+            
+            try {
+                const response = await fetch(`http://localhost:8000/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        idea, 
+                        conversation_history: conversationHistory
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("API Response:", data);
+                
+                // Add assistant response to conversation history
+                if (data.content) {
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: data.content
+                    });
+                    updateHistoryDisplay();
+                }
+                
+                resultEl.textContent = JSON.stringify(data, null, 2);
+                resultEl.style.display = "block";
+            } catch (error) {
+                console.error("Error calling API:", error);
+                errorEl.textContent = error.message;
+                errorEl.style.display = "block";
+            } finally {
+                loadingEl.style.display = "none";
+            }
+        }
+        
+        // Initialize history display
+        updateHistoryDisplay();
+    </script>
+</body>
+</html> 
